@@ -5,6 +5,7 @@ import { UserManagementRoute } from './features/auth/routes/UserManagementRoute'
 import { ClinicRoute } from './features/clinic/routes/ClinicRoute';
 import { DashboardRoute } from './features/dashboard/routes/DashboardRoute';
 import { PortalRoute } from './features/portal/routes/PortalRoute';
+import { CustomerManagementRoute } from './features/customers/routes/CustomerManagementRoute';
 import { AppLayout } from './features/shared/layouts/AppLayout';
 import { createNavigationItems } from './features/shared/utils/navigation';
 
@@ -46,6 +47,7 @@ const App = () => {
       </Route>
       <Route element={<AuthGuard allowedRoles={['owner', 'staff']} />}>
         <Route path="/users" element={<UserManagementRoute />} />
+        <Route path="/customers" element={<CustomerManagementRoute />} />
       </Route>
       <Route path="/" element={<Navigate to="/auth" replace />} />
       <Route path="*" element={<Navigate to="/auth" replace />} />

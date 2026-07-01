@@ -7,8 +7,12 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard = ({ allowedRoles }: AuthGuardProps) => {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, isBootstrapping } = useAuth();
   const location = useLocation();
+
+  if (isBootstrapping) {
+    return <div className="surface-card">Loading session...</div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace state={{ from: location }} />;

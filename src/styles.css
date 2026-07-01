@@ -32,6 +32,9 @@ button, input { font: inherit; }
 .status-badge--neutral { background: #e2e8f0; color: #334155; }
 .form-builder { display: grid; gap: 1rem; }
 .form-builder__field { display: grid; gap: 0.4rem; }
+.checkbox-row { display: flex; align-items: center; gap: 0.75rem; }
+.checkbox-row input { width: auto; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .form-builder__field input, .form-builder__field select, .surface-card button, .auth-route button { padding: 0.8rem 1rem; border-radius: 999px; border: 1px solid #cbd5e1; }
 .surface-card button, .auth-route button { background: #2563eb; color: white; cursor: pointer; }
 .surface-card button:disabled, .auth-route button:disabled { opacity: 0.7; cursor: wait; }

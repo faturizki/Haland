@@ -8,13 +8,15 @@ import { emptyStateMessage } from '../../shared/utils/empty';
 import { useToast } from '../../shared/hooks/useToast';
 import { useAuth } from '../hooks/useAuth';
 import { createUserSchema, resetPinSchema, updateRoleSchema } from '../validation';
-import { authService } from '../services/authService';
-import { canActivateOrDeactivate, canChangeRole, canCreateRole, canCreateUsers, canResetPin } from '../utils/permissions';
+import { createAuthUseCases } from '../application/authUseCases';
+import { supabaseAuthRepository } from '../repositories/supabaseAuthRepository';
+import { canActivateOrDeactivate, canChangeRole, canCreateRole, canCreateUsers, canResetPin } from '../services/permissionService';
 import type { CreateUserPayload, ResetPinPayload, UpdateUserRolePayload } from '../types';
 
 export const UserManagementScreen = () => {
   const { user, users, loadUsers } = useAuth();
   const { addToast } = useToast();
+  const authUseCases = useMemo(() => createAuthUseCases(supabaseAuthRepository), []);
   const [filter, setFilter] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export const UserManagementScreen = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await authService.createUser(values);
+      await authUseCases.createUser(values);
       addToast({ title: 'User created', description: 'The account was created successfully.', variant: 'success' });
       await loadUsers();
       createForm.reset();
@@ -68,7 +70,7 @@ export const UserManagementScreen = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await authService.resetPin(values);
+      await authUseCases.resetPin(values);
       addToast({ title: 'PIN reset', description: 'The PIN was updated successfully.', variant: 'success' });
     } catch (serviceError) {
       const message = serviceError instanceof Error ? serviceError.message : 'Unable to reset PIN.';
@@ -88,7 +90,7 @@ export const UserManagementScreen = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await authService.updateRole(values);
+      await authUseCases.updateRole(values);
       addToast({ title: 'Role updated', description: 'The role was changed successfully.', variant: 'success' });
       await loadUsers();
     } catch (serviceError) {
@@ -109,7 +111,7 @@ export const UserManagementScreen = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await authService.updateStatus({ userId, status });
+      await authUseCases.updateStatus({ userId, status });
       addToast({ title: 'Account updated', description: 'The account status was changed successfully.', variant: 'success' });
       await loadUsers();
     } catch (serviceError) {

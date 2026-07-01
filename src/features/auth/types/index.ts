@@ -2,6 +2,7 @@ import type { AppRole, AccountStatus } from '../../shared/types';
 
 export interface AuthSession {
   accessToken: string;
+  expiresAt: string;
   user: AuthUser;
 }
 
