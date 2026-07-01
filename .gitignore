@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.vite/
+.cache/
+coverage/
+dist/
+build/
+*.tsbuildinfo
+*.tsbuildinfo.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+*.out
+*.pid
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Supabase local development files
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+supabase/.env.*
+supabase/.log/
+supabase/config.toml.local
+*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
