@@ -1,6 +1,6 @@
 export interface QueryFilter {
   column: string;
-  operator: 'eq' | 'isNull' | 'in';
+  operator: 'eq' | 'isNull' | 'in' | 'contains';
   value: unknown;
 }
 
@@ -29,6 +29,12 @@ export interface QuerySpec {
   search?: string;
   cursor?: string;
   range?: QueryRange;
+  includeRelations?: string[];
+  selectFields?: string[];
+  tenantScope?: string;
+  softDelete?: boolean;
+  optimisticLock?: { column: string; value: unknown };
+  batch?: unknown[];
 }
 
 export const createQueryBuilder = (table: string, select: string) => {
@@ -39,6 +45,12 @@ export const createQueryBuilder = (table: string, select: string) => {
   let search: string | undefined;
   let cursor: string | undefined;
   let range: QueryRange | undefined;
+  let includeRelations: string[] | undefined;
+  let selectFields: string[] | undefined;
+  let tenantScope: string | undefined;
+  let softDelete: boolean | undefined;
+  let optimisticLock: { column: string; value: unknown } | undefined;
+  let batch: unknown[] | undefined;
 
   return {
     where(column: string, value: unknown, operator: QueryFilter['operator'] = 'eq') {
@@ -69,6 +81,31 @@ export const createQueryBuilder = (table: string, select: string) => {
       range = { from, to };
       return this;
     },
+    includeRelation(relation: string) {
+      includeRelations = includeRelations ?? [];
+      includeRelations.push(relation);
+      return this;
+    },
+    selectFields(columns: string | string[]) {
+      selectFields = Array.isArray(columns) ? columns : columns.split(',').map((column) => column.trim()).filter(Boolean);
+      return this;
+    },
+    tenantScope(clinicId: string) {
+      tenantScope = clinicId;
+      return this;
+    },
+    softDelete(includeArchived = false) {
+      softDelete = includeArchived;
+      return this;
+    },
+    optimisticLock(column: string, value: unknown) {
+      optimisticLock = { column, value };
+      return this;
+    },
+    batch(values: unknown[]) {
+      batch = values;
+      return this;
+    },
     toSpec(): QuerySpec {
       return {
         table,
@@ -80,6 +117,12 @@ export const createQueryBuilder = (table: string, select: string) => {
         search,
         cursor,
         range,
+        includeRelations,
+        selectFields,
+        tenantScope,
+        softDelete,
+        optimisticLock,
+        batch,
       };
     },
   };

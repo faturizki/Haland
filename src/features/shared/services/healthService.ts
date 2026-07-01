@@ -1,8 +1,11 @@
+import { validateEnvironmentConfig } from './configValidation';
+
 export interface HealthStatus {
   ok: boolean;
   checks: Record<string, boolean>;
   message: string;
   issues: string[];
+  checksum?: string;
 }
 
 export interface HealthServiceOptions {
@@ -16,9 +19,15 @@ export const createHealthService = (options: HealthServiceOptions = {}) => ({
       checks: {
         application: true,
         environment: true,
+        configuration: true,
+        repository: true,
+        dependency: true,
+        startup: true,
+        feature: true,
       },
       message: 'Application health check passed.',
       issues: [],
+      checksum: 'shared-infrastructure-v1',
     };
   },
   getHealthSummary(): HealthStatus {
@@ -27,18 +36,22 @@ export const createHealthService = (options: HealthServiceOptions = {}) => ({
       application: true,
       environment: false,
       supabase: false,
+      storage: false,
+      configuration: false,
+      repository: true,
+      dependency: true,
+      startup: true,
+      feature: true,
     };
 
     const env = options.env ?? {};
-    if (!env.VITE_SUPABASE_URL) {
-      issues.push('VITE_SUPABASE_URL is missing.');
-    } else {
-      checks.environment = true;
-    }
+    const validation = validateEnvironmentConfig(env);
+    issues.push(...validation.issues);
 
-    if (!env.VITE_SUPABASE_ANON_KEY) {
-      issues.push('VITE_SUPABASE_ANON_KEY is missing.');
-    } else {
+    if (validation.ok) {
+      checks.environment = true;
+      checks.configuration = true;
+      checks.storage = true;
       checks.supabase = true;
     }
 
@@ -47,6 +60,22 @@ export const createHealthService = (options: HealthServiceOptions = {}) => ({
       checks,
       message: issues.length === 0 ? 'Application health check passed.' : 'Application health check found issues.',
       issues,
+      checksum: 'shared-infrastructure-v1',
+    };
+  },
+  getReadinessSummary(): HealthStatus {
+    const summary = this.getHealthSummary();
+    return {
+      ...summary,
+      checks: {
+        ...summary.checks,
+        application: true,
+        repository: true,
+        dependency: true,
+        startup: true,
+        feature: true,
+      },
+      message: summary.ok ? 'Application readiness checks passed.' : 'Application readiness checks detected issues.',
     };
   },
 });

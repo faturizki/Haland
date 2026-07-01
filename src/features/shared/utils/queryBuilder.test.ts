@@ -21,12 +21,18 @@ describe('createQueryBuilder', () => {
     });
   });
 
-  it('supports cursor pagination, search, and projection', () => {
+  it('supports cursor pagination, search, projection, relation includes, field selection, and tenant-safe abstractions', () => {
     const query = createQueryBuilder('customers', 'id, name')
       .select(['id', 'name'])
       .search('alice')
       .cursor('next-page')
-      .range(0, 49);
+      .range(0, 49)
+      .includeRelation('profile')
+      .selectFields(['id', 'name'])
+      .tenantScope('clinic-123')
+      .softDelete(false)
+      .optimisticLock('version', 3)
+      .batch(['id-1', 'id-2']);
 
     expect(query.toSpec()).toEqual({
       table: 'customers',
@@ -38,6 +44,12 @@ describe('createQueryBuilder', () => {
       search: 'alice',
       cursor: 'next-page',
       range: { from: 0, to: 49 },
+      includeRelations: ['profile'],
+      selectFields: ['id', 'name'],
+      tenantScope: 'clinic-123',
+      softDelete: false,
+      optimisticLock: { column: 'version', value: 3 },
+      batch: ['id-1', 'id-2'],
     });
   });
 });

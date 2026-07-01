@@ -1,126 +1,194 @@
 import { supabase } from '../../auth/lib/supabase';
 import type { CustomerRepository } from './customerRepository';
+import type { CustomerPayload, CustomerRecord, PetPayload, PetRecord } from '../types';
 import { mapCustomerRow, mapPetRow } from './customerMapper';
 import { toRepositoryError } from '../../shared/utils/repositoryError';
+import { createRepositoryContext, type RepositoryContext } from '../../shared/utils/repositoryContract';
+import { BaseRepository } from '../../shared/services/baseRepository';
+import { createQueryBuilder } from '../../shared/utils/queryBuilder';
 
-export const supabaseCustomerRepository: CustomerRepository = {
-  async listCustomers(includeArchived = false) {
-    let query = supabase.from('customers').select('id, name, phone, email, created_at, updated_at, deleted_at').order('created_at', { ascending: false });
-    if (!includeArchived) {
-      query = query.is('deleted_at', null);
-    }
+export const supabaseCustomerRepository: CustomerRepository = new (class extends BaseRepository implements CustomerRepository {
+  async listCustomers(includeArchived = false, context: RepositoryContext = createRepositoryContext()): Promise<CustomerRecord[]> {
+    const result = await this.executeWithContext('listCustomers', 'customers', async () => {
+      const querySpec = createQueryBuilder('customers', 'id, name, phone, email, created_at, updated_at, deleted_at')
+        .tenantScope(context.clinicId ?? 'default-clinic')
+        .softDelete(includeArchived)
+        .orderBy('created_at', 'desc')
+        .toSpec();
 
-    const { data, error } = await query;
-    if (error) {
-      throw toRepositoryError(error);
-    }
+      let query = supabase.from(querySpec.table).select(querySpec.select).order('created_at', { ascending: false });
+      if (!includeArchived) {
+        query = query.is('deleted_at', null);
+      }
 
-    return (data ?? []).map((row) => mapCustomerRow(row as Record<string, unknown>));
-  },
+      const { data, error } = await query;
+      if (error) {
+        throw toRepositoryError(error);
+      }
 
-  async createCustomer(payload, createdBy) {
-    const { data, error } = await supabase.from('customers').insert({
-      name: payload.name,
-      phone: payload.phone,
-      email: payload.email?.trim() || null,
-      created_by: createdBy,
-    }).select('id, name, phone, email, created_at, updated_at, deleted_at').single();
+      return (data ?? []).map((row) => mapCustomerRow(row as unknown as Record<string, unknown>));
+    }, context);
 
-    if (error) {
-      throw toRepositoryError(error);
-    }
+    return result.data;
+  }
 
-    return mapCustomerRow(data as Record<string, unknown>);
-  },
+  async createCustomer(payload: CustomerPayload, createdBy: string, context: RepositoryContext = createRepositoryContext()): Promise<CustomerRecord> {
+    const result = await this.executeWithContext('createCustomer', 'customers', async () => {
+      const querySpec = createQueryBuilder('customers', 'id, name, phone, email, created_at, updated_at, deleted_at')
+        .tenantScope(context.clinicId ?? 'default-clinic')
+        .toSpec();
+      const { data, error } = await supabase.from(querySpec.table).insert({
+        name: payload.name,
+        phone: payload.phone,
+        email: payload.email?.trim() || null,
+        created_by: createdBy,
+      }).select('id, name, phone, email, created_at, updated_at, deleted_at').single();
 
-  async updateCustomer(id, payload) {
-    const { data, error } = await supabase.from('customers').update({
-      name: payload.name,
-      phone: payload.phone,
-      email: payload.email?.trim() || null,
-    }).eq('id', id).select('id, name, phone, email, created_at, updated_at, deleted_at').single();
+      if (error) {
+        throw toRepositoryError(error);
+      }
 
-    if (error) {
-      throw toRepositoryError(error);
-    }
+      return mapCustomerRow(data as Record<string, unknown>);
+    }, context);
 
-    return mapCustomerRow(data as Record<string, unknown>);
-  },
+    return result.data;
+  }
 
-  async archiveCustomer(id) {
-    const { error } = await supabase.from('customers').update({ deleted_at: new Date().toISOString() }).eq('id', id);
-    if (error) {
-      throw toRepositoryError(error);
-    }
-  },
+  async updateCustomer(id: string, payload: CustomerPayload, context: RepositoryContext = createRepositoryContext()): Promise<CustomerRecord> {
+    const result = await this.executeWithContext('updateCustomer', 'customers', async () => {
+      const querySpec = createQueryBuilder('customers', 'id, name, phone, email, created_at, updated_at, deleted_at')
+        .tenantScope(context.clinicId ?? 'default-clinic')
+        .toSpec();
+      const { data, error } = await supabase.from(querySpec.table).update({
+        name: payload.name,
+        phone: payload.phone,
+        email: payload.email?.trim() || null,
+      }).eq('id', id).select('id, name, phone, email, created_at, updated_at, deleted_at').single();
 
-  async restoreCustomer(id) {
-    const { error } = await supabase.from('customers').update({ deleted_at: null }).eq('id', id);
-    if (error) {
-      throw toRepositoryError(error);
-    }
-  },
+      if (error) {
+        throw toRepositoryError(error);
+      }
 
-  async listPets(customerId, includeArchived = false) {
-    let query = supabase.from('pets').select('id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at').eq('customer_id', customerId).order('created_at', { ascending: false });
-    if (!includeArchived) {
-      query = query.is('deleted_at', null);
-    }
+      return mapCustomerRow(data as Record<string, unknown>);
+    }, context);
 
-    const { data, error } = await query;
-    if (error) {
-      throw toRepositoryError(error);
-    }
+    return result.data;
+  }
 
-    return (data ?? []).map((row) => mapPetRow(row as Record<string, unknown>));
-  },
+  async archiveCustomer(id: string, context: RepositoryContext = createRepositoryContext()): Promise<void> {
+    await this.executeWithContext('archiveCustomer', 'customers', async () => {
+      const querySpec = createQueryBuilder('customers', 'id').tenantScope(context.clinicId ?? 'default-clinic').toSpec();
+      const { error } = await supabase.from(querySpec.table).update({ deleted_at: new Date().toISOString() }).eq('id', id);
+      if (error) {
+        throw toRepositoryError(error);
+      }
+      return undefined;
+    }, context);
+  }
 
-  async createPet(payload, createdBy) {
-    const { data, error } = await supabase.from('pets').insert({
-      customer_id: payload.customerId,
-      name: payload.name,
-      species: payload.species,
-      breed: payload.breed,
-      birth_date: payload.birthDate?.trim() || null,
-      weight_kg: payload.weightKg,
-      created_by: createdBy,
-    }).select('id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at').single();
+  async restoreCustomer(id: string, context: RepositoryContext = createRepositoryContext()): Promise<void> {
+    await this.executeWithContext('restoreCustomer', 'customers', async () => {
+      const querySpec = createQueryBuilder('customers', 'id').tenantScope(context.clinicId ?? 'default-clinic').toSpec();
+      const { error } = await supabase.from(querySpec.table).update({ deleted_at: null }).eq('id', id);
+      if (error) {
+        throw toRepositoryError(error);
+      }
+      return undefined;
+    }, context);
+  }
 
-    if (error) {
-      throw toRepositoryError(error);
-    }
+  async listPets(customerId: string, includeArchived = false, context: RepositoryContext = createRepositoryContext()): Promise<PetRecord[]> {
+    const result = await this.executeWithContext('listPets', 'pets', async () => {
+      const querySpec = createQueryBuilder('pets', 'id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at')
+        .tenantScope(context.clinicId ?? 'default-clinic')
+        .softDelete(includeArchived)
+        .where('customer_id', customerId)
+        .orderBy('created_at', 'desc')
+        .toSpec();
+      let query = supabase.from(querySpec.table).select(querySpec.select).eq('customer_id', customerId).order('created_at', { ascending: false });
+      if (!includeArchived) {
+        query = query.is('deleted_at', null);
+      }
 
-    return mapPetRow(data as Record<string, unknown>);
-  },
+      const { data, error } = await query;
+      if (error) {
+        throw toRepositoryError(error);
+      }
 
-  async updatePet(id, payload) {
-    const { data, error } = await supabase.from('pets').update({
-      customer_id: payload.customerId,
-      name: payload.name,
-      species: payload.species,
-      breed: payload.breed,
-      birth_date: payload.birthDate?.trim() || null,
-      weight_kg: payload.weightKg,
-    }).eq('id', id).select('id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at').single();
+      return (data ?? []).map((row) => mapPetRow(row as unknown as Record<string, unknown>));
+    }, context);
 
-    if (error) {
-      throw toRepositoryError(error);
-    }
+    return result.data;
+  }
 
-    return mapPetRow(data as Record<string, unknown>);
-  },
+  async createPet(payload: PetPayload, createdBy: string, context: RepositoryContext = createRepositoryContext()): Promise<PetRecord> {
+    const result = await this.executeWithContext('createPet', 'pets', async () => {
+      const querySpec = createQueryBuilder('pets', 'id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at')
+        .tenantScope(context.clinicId ?? 'default-clinic')
+        .toSpec();
+      const { data, error } = await supabase.from(querySpec.table).insert({
+        customer_id: payload.customerId,
+        name: payload.name,
+        species: payload.species,
+        breed: payload.breed,
+        birth_date: payload.birthDate?.trim() || null,
+        weight_kg: payload.weightKg,
+        created_by: createdBy,
+      }).select('id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at').single();
 
-  async archivePet(id) {
-    const { error } = await supabase.from('pets').update({ deleted_at: new Date().toISOString() }).eq('id', id);
-    if (error) {
-      throw toRepositoryError(error);
-    }
-  },
+      if (error) {
+        throw toRepositoryError(error);
+      }
 
-  async restorePet(id) {
-    const { error } = await supabase.from('pets').update({ deleted_at: null }).eq('id', id);
-    if (error) {
-      throw toRepositoryError(error);
-    }
-  },
-};
+      return mapPetRow(data as Record<string, unknown>);
+    }, context);
+
+    return result.data;
+  }
+
+  async updatePet(id: string, payload: PetPayload, context: RepositoryContext = createRepositoryContext()): Promise<PetRecord> {
+    const result = await this.executeWithContext('updatePet', 'pets', async () => {
+      const querySpec = createQueryBuilder('pets', 'id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at')
+        .tenantScope(context.clinicId ?? 'default-clinic')
+        .toSpec();
+      const { data, error } = await supabase.from(querySpec.table).update({
+        customer_id: payload.customerId,
+        name: payload.name,
+        species: payload.species,
+        breed: payload.breed,
+        birth_date: payload.birthDate?.trim() || null,
+        weight_kg: payload.weightKg,
+      }).eq('id', id).select('id, customer_id, name, species, breed, birth_date, weight_kg, created_at, updated_at, deleted_at').single();
+
+      if (error) {
+        throw toRepositoryError(error);
+      }
+
+      return mapPetRow(data as Record<string, unknown>);
+    }, context);
+
+    return result.data;
+  }
+
+  async archivePet(id: string, context: RepositoryContext = createRepositoryContext()): Promise<void> {
+    await this.executeWithContext('archivePet', 'pets', async () => {
+      const querySpec = createQueryBuilder('pets', 'id').tenantScope(context.clinicId ?? 'default-clinic').toSpec();
+      const { error } = await supabase.from(querySpec.table).update({ deleted_at: new Date().toISOString() }).eq('id', id);
+      if (error) {
+        throw toRepositoryError(error);
+      }
+      return undefined;
+    }, context);
+  }
+
+  async restorePet(id: string, context: RepositoryContext = createRepositoryContext()): Promise<void> {
+    await this.executeWithContext('restorePet', 'pets', async () => {
+      const querySpec = createQueryBuilder('pets', 'id').tenantScope(context.clinicId ?? 'default-clinic').toSpec();
+      const { error } = await supabase.from(querySpec.table).update({ deleted_at: null }).eq('id', id);
+      if (error) {
+        throw toRepositoryError(error);
+      }
+      return undefined;
+    }, context);
+  }
+})();

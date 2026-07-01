@@ -14,5 +14,6 @@ export const createPerformanceTimer = () => {
   const startedAt = Date.now();
   return {
     elapsedMs: () => Date.now() - startedAt,
+    stop: () => Date.now() - startedAt,
   };
 };
